@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class Room{
 
@@ -8,13 +9,25 @@ public class Room{
 	public int top_z;
 	public int width_x;
 	public int length_z; /*would be height if using y in 2D space*/
+	public List<Vector3> contents;
 
 	public Room(int top_x_coordinate, int top_z_coordinate,int width,int length){
+
+		contents = new List<Vector3> ();
 
 		top_x = top_x_coordinate;
 		top_z = top_z_coordinate;
 
 		width_x = width;
 		length_z = length;
+	}
+
+	public void AddChest(){
+
+		int item_x = Random.Range (top_x + 1,top_x + width_x - 1);
+		int item_z = Random.Range (top_z + 1,top_z + length_z - 1);
+
+		Vector3 new_item_position = new Vector3 (item_x,0.5f,item_z);
+		contents.Add (new_item_position);
 	}
 }

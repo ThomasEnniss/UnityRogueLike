@@ -90,6 +90,34 @@ NavMeshSettings:
     cellSize: 0.16666667
     manualCellSize: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &626802975
+GameObject:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  serializedVersion: 4
+  m_Component:
+  - 4: {fileID: 626802976}
+  m_Layer: 0
+  m_Name: map
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &626802976
+Transform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 626802975}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 34.07786, y: -35.03312, z: 15.687195}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 3
 --- !u!1 &1083849955
 GameObject:
   m_ObjectHideFlags: 0
@@ -267,18 +295,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 480b4fad907b8d14ea7862b0a438f2b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  parent_map: {fileID: 0}
+  parent_map: {fileID: 626802975}
   wall_prefab: {fileID: 1000010374855574, guid: 71a5603eb88e5ce4d9a45a721f86fe87,
     type: 2}
   floor_prefab: {fileID: 1000010374855574, guid: cd572c2572fc0b44a8f106d7b3df822a,
     type: 2}
-  map_width_x: 30
-  map_length_z: 30
-  number_of_rooms: 15
-  min_room_width: 0
-  max_room_width: 5
-  min_room_length: 0
-  max_room_length: 0
+  map_width_x: 100
+  map_length_z: 100
+  number_of_rooms: 30
+  min_room_width: 5
+  max_room_width: 15
+  min_room_length: 5
+  max_room_length: 15
 --- !u!4 &1744666754
 Transform:
   m_ObjectHideFlags: 0
