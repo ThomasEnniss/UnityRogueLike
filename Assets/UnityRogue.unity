@@ -295,11 +295,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 480b4fad907b8d14ea7862b0a438f2b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  player: {fileID: 1000013062825546, guid: 81fbadc8a94edf1479cc326eaa96795b, type: 2}
   parent_map: {fileID: 626802975}
   wall_prefab: {fileID: 1000010374855574, guid: 71a5603eb88e5ce4d9a45a721f86fe87,
     type: 2}
   floor_prefab: {fileID: 1000010374855574, guid: cd572c2572fc0b44a8f106d7b3df822a,
     type: 2}
+  chest: {fileID: 1000013149930564, guid: e0eee64809b45104d85be271b1bea296, type: 2}
   map_width_x: 100
   map_length_z: 100
   number_of_rooms: 30
@@ -307,6 +309,7 @@ MonoBehaviour:
   max_room_width: 15
   min_room_length: 5
   max_room_length: 15
+  max_chest_count: 10
 --- !u!4 &1744666754
 Transform:
   m_ObjectHideFlags: 0
