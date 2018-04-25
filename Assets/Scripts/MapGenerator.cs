@@ -10,8 +10,8 @@ public class MapGenerator : MonoBehaviour {
 	public GameObject floor_prefab;
 	public GameObject chest;
 
-	public int room_space_width_x;
-	public int room_space_length_z;
+	public int map_width_x;
+	public int map_length_z;
 	public int number_of_rooms;
 
 	public int min_room_width;
@@ -22,37 +22,37 @@ public class MapGenerator : MonoBehaviour {
 
 	public int max_chest_count;
 
-	int[,] room_grid;
+	int[,] map_generation_grid;
 
-	int grid_x_constant;
-	int grid_z_constant;
+	List<Room> current_room_list;
+	RoomGraph current_map_graph;
 
-	List<Room> rooms_to_plot;
-
-
+	int actual_room_count;
 
 	void Start () {
-		grid_x_constant = min_room_width+2;
-		grid_z_constant = room_space_length_z+2;
 		//player_in_map = false;
-		room_grid = new int[room_space_width_x,room_space_length_z];
-		rooms_to_plot = new List<Room> ();
+		map_generation_grid = new int[map_width_x,map_length_z];
+		current_room_list = new List<Room> ();
+		actual_room_count = 0;
 		GenerateMap ();
+		CreateRoomGraph ();
+		current_map_graph.GenerateEdgeConnections ();
 		DrawMap ();
+		current_map_graph.DisplayGraph ();
 	}
 
 	void GenerateMap(){
-		FillMap ();
+		CreateBlankMapArray ();
 		CreateRooms ();
 	}
 
-	void FillMap(){
+	void CreateBlankMapArray(){
 
-		for(int lengthZ = 0;lengthZ<room_space_length_z;lengthZ++)
+		for(int lengthZ = 0;lengthZ<map_length_z;lengthZ++)
 		{
-			for(int widthX = 0;widthX<room_space_width_x;widthX++)
+			for(int widthX = 0;widthX<map_width_x;widthX++)
 			{
-				room_grid[widthX,lengthZ] = 0;
+				map_generation_grid[widthX,lengthZ] = 0;
 			}
 		}
 	}
@@ -61,70 +61,148 @@ public class MapGenerator : MonoBehaviour {
 
 		/*These change based on the current rooms position and the roomnode.*/
 		int initial_x_min_constraint = 0;
-		int initial_x_max_constraint = room_space_width_x - 1;
+		int initial_x_max_constraint = map_width_x - 1;
 		int initial_z_min_constraint = 0;
-		int initial_z_max_constraint = room_space_length_z - 1;			
+		int initial_z_max_constraint = map_length_z - 1;
 
+		int fail_count = 0;
+		int MAX_FAIL_COUNT = 3;
 
 		for (int i = 0; i < number_of_rooms; i++) {
 
-			int grid_x = (int)Random.Range (initial_x_min_constraint,initial_x_max_constraint);
-			int grid_z = (int)Random.Range (initial_z_min_constraint,initial_z_max_constraint);
+			int room_width_x = (int)Random.Range (min_room_width,max_room_width);
+			int room_length_z = (int)Random.Range (min_room_length,max_room_length);
 
-			if (room_grid[grid_x,grid_z] == 0) {
+			/*We need to make width odd so we can center things.*/
+			/*Center width first*/
+			if (room_width_x % 2 == 0) {
 
-				int width = (int)Random.Range (min_room_width,max_room_width);
-				int length = (int)Random.Range (min_room_length,max_room_length);
+				if (room_width_x > min_room_width) {
 
-				int top_x = (int)Random.Range (grid_x*grid_x_constant,grid_x*grid_x_constant+grid_x_constant-max_room_width-1);
-				int top_z = (int)Random.Range (grid_z*grid_z_constant,grid_z*grid_z_constant+grid_z_constant-max_room_length-1);
+					room_width_x--;
 
-				Room new_room = new Room (top_x,top_z,width,length);
-				rooms_to_plot.Add (new_room);
-				room_grid [grid_x, grid_z] = 1;
+				} else {
 
-			} else {
-				i++;
+					room_width_x++;
+
+				}
+			} 
+
+			/*Center Length second*/
+			if(room_length_z % 2 == 0){
+
+				if(room_length_z > min_room_length){
+
+					room_length_z--;
+
+				}else{
+				
+					room_length_z++;
+
+				}
+			}				
+
+			int top_x = (int)Random.Range (initial_x_min_constraint,initial_x_max_constraint - room_width_x);
+			int top_z = (int)Random.Range (initial_z_min_constraint,initial_z_max_constraint - room_length_z);
+
+			Room new_room = new Room (i,top_x,top_z,room_width_x,room_length_z);
+
+			if (!RoomCollision (new_room)) {			
+
+				new_room.CalculateCenter ();
+				current_room_list.Add (new_room);
+				fail_count = 0;
+				actual_room_count++;
+				PlotRoom (new_room);
+				print ("Plotting room: " + i);
+
+			}
+			else
+			{
+				
+				fail_count++;
+				print ("Room Failed");
+
+				if(fail_count<MAX_FAIL_COUNT){
+					i--;
+				}
 			}
 		}
 	}
 
-	/*Fills the room area on the map.*/
-	/*void PlotRoom(Room room){
+	bool RoomCollision(Room room){
+
+		bool collision = false;
 
 		for(int lengthZ = room.top_z; lengthZ < room.top_z + room.length_z; lengthZ++)
 		{
 			for(int widthX = room.top_x; widthX < room.top_x + room.width_x; widthX++)
 			{
-				if (lengthZ == room.top_z || lengthZ == room.top_z + room.length_z - 1 || widthX == room.top_x || widthX == room.top_x + room.width_x - 1) {
-					if (room_grid [widthX, lengthZ] != 0) {
-						room_grid [widthX, lengthZ] = 2;
-					}
-				} else {
-					
-					room_grid [widthX, lengthZ] = 0;					
+				if (map_generation_grid [widthX, lengthZ] != 0)
+				{
+					collision = true;
 				}
 			}
 		}
-	}*/
+		return collision;
+	}
+
+	/*Fills the room area on the map.*/
+	void PlotRoom(Room room){
+
+		for(int lengthZ = room.top_z; lengthZ < room.top_z + room.length_z; lengthZ++)
+		{
+			for(int widthX = room.top_x; widthX < room.top_x + room.width_x; widthX++)
+			{
+				if (lengthZ == room.top_z || lengthZ == room.top_z + room.length_z - 1 || widthX == room.top_x || widthX == room.top_x + room.width_x - 1)
+				{					
+					map_generation_grid [widthX, lengthZ] = 2;
+				}
+				else 
+				{					
+					map_generation_grid [widthX, lengthZ] = 1;		
+				}
+			}
+		}
+	}
+
+	void CreateRoomGraph(){
+
+		current_map_graph = new RoomGraph (actual_room_count);
+
+		foreach(Room current_room in current_room_list){
+			
+			RoomNode new_node = new RoomNode (current_room);
+			current_map_graph.AddRoomNode (new_node);
+
+		}
+	}
+
+	void GenerateDoors(){
+
+
+
+
+
+	}
 
 	void DrawMap(){
 
-		foreach (Room new_room in rooms_to_plot) {
-
-			for(int lengthZ = new_room.top_z;lengthZ<new_room.top_z+new_room.length_z;lengthZ++)
+		for(int lengthZ = 0;lengthZ<map_length_z;lengthZ++)
+		{
+			for(int widthX = 0;widthX<map_width_x;widthX++)
 			{
-				for(int widthX = new_room.top_x;widthX<new_room.top_x+new_room.width_x;widthX++)
-				{
-					/*Instantiate a wall and floor tile.*/
-					if (lengthZ == new_room.top_z || lengthZ == new_room.top_z + new_room.length_z - 1 || widthX == new_room.top_x || widthX == new_room.top_x + new_room.width_x - 1) {
-						GameObject wall_tile = (GameObject)Instantiate (wall_prefab, new Vector3 (widthX,0.75f,lengthZ), Quaternion.identity);
-						GameObject floor_tile = (GameObject)Instantiate (floor_prefab, new Vector3 (widthX,0.0f,lengthZ), Quaternion.identity);
-					} else {
-						GameObject floor_tile = (GameObject)Instantiate (floor_prefab, new Vector3 (widthX,0.0f,lengthZ), Quaternion.identity);				
-					}
+				/*Instantiate a wall and floor tile.*/
+				if (map_generation_grid [widthX, lengthZ]==2) {
+					GameObject wall_tile = (GameObject)Instantiate (wall_prefab, new Vector3 (widthX,0.75f,lengthZ), Quaternion.identity);
+					GameObject floor_tile = (GameObject)Instantiate (floor_prefab, new Vector3 (widthX,0.0f,lengthZ), Quaternion.identity);
+				}
+
+				if(map_generation_grid [widthX, lengthZ]==1){
+					GameObject floor_tile = (GameObject)Instantiate (floor_prefab, new Vector3 (widthX,0.0f,lengthZ), Quaternion.identity);				
 				}
 			}
-		}		
+		}
+		print (Time.time);
 	}
 }
