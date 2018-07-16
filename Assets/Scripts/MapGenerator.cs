@@ -27,6 +27,7 @@ public class MapGenerator : MonoBehaviour {
 
 	int[,] map_generation_grid;
 
+
 	List<Room> current_room_list;
 	RoomGraph current_map_graph;
 
@@ -35,6 +36,7 @@ public class MapGenerator : MonoBehaviour {
 	void Start () {
 		//player_in_map = false;
 		map_generation_grid = new int[map_width_x,map_length_z];
+
 		current_room_list = new List<Room> ();
 		actual_room_count = 0;
 		GenerateMap ();
@@ -46,6 +48,7 @@ public class MapGenerator : MonoBehaviour {
 		CreatePaths ();
 		DrawMap ();
 		DrawDebugLines();
+		PlacePlayer ();
 	}
 
 	void GenerateMap(){
@@ -146,12 +149,65 @@ public class MapGenerator : MonoBehaviour {
 			Room start_room = current_map_graph.room_graph [current_edge.start_room];
 			Room destination_room = current_map_graph.room_graph [current_edge.destination_room];
 
-			FindSuitableDoorLocation (start_room,destination_room);
-			FindSuitableDoorLocation (destination_room,start_room);
+			//Vector3 start = FindSuitableDoorLocation (start_room,destination_room);
+			//Vector3 goal = FindSuitableDoorLocation (destination_room,start_room);
+
+			CreateLazyPath (start_room,destination_room);
+		}
+		AddDoors ();
+		CleanUpPaths ();
+		CleanUpHallways ();
+	}
+
+	void CreateLazyPath(Room start, Room goal){
+
+		int current_x = (int)start.center.x;
+		int current_z = (int)start.center.z;
+
+		int x_increment;
+		int z_increment;
+
+		if (current_x > goal.center.x) {
+			x_increment = -1;
+		} else {
+			x_increment = 1;
+		}
+
+		if (current_z > goal.center.z) {
+			z_increment = -1;
+		} else {
+			z_increment = 1;
+		}
+
+		while(current_x!=goal.center.x){
+			
+			current_x+=x_increment;
+
+			if(map_generation_grid [current_x, (int)start.center.z] == 2){
+				map_generation_grid [current_x, (int)start.center.z] = 1;	
+			}else{
+				if(map_generation_grid [current_x, (int)start.center.z]==0){
+					map_generation_grid [current_x, (int)start.center.z] = 5;
+				}
+			}
+		}
+
+		while(current_z!=goal.center.z){
+			
+			current_z+=z_increment;
+
+			if(map_generation_grid [current_x, current_z] == 2){
+				map_generation_grid [current_x, current_z] = 1;	
+			}else{
+				if(map_generation_grid [current_x, current_z]==0){
+					map_generation_grid [current_x, current_z] = 5;
+				}
+			}
 		}
 	}
 
-	void FindSuitableDoorLocation(Room start, Room destination){
+
+/*	Vector3 FindSuitableDoorLocation(Room start, Room destination){
 
 
 		float internal_angle = 90-Mathf.Rad2Deg*Mathf.Atan(start.width_x/start.length_z);
@@ -160,45 +216,122 @@ public class MapGenerator : MonoBehaviour {
 
 		Debug.Log (angle_to_destination);
 
-		/*Top, then right, then left, then bottom last.*/
+		
 		if(angle_to_destination<=internal_angle){
 			
-			PlaceDoor(new Vector3 ((int)Random.Range(start.top_x+1,start.top_x+start.width_x-1),0,start.top_z),3);
+			return PlaceDoor(new Vector3 ((int)Random.Range(start.top_x+1,start.top_x+start.width_x-1),0,start.top_z),3);
 		}else if(start.center.x <= destination.center.x && angle_to_destination > internal_angle && angle_to_destination < (180f-internal_angle)){
 			
-			PlaceDoor(new Vector3 (start.top_x+start.width_x,0,(int)Random.Range(start.top_z+1,start.top_z+start.length_z-1)),4);
+			return PlaceDoor(new Vector3 (start.top_x+start.width_x-1,0,(int)Random.Range(start.top_z+1,start.top_z+start.length_z-1)),4);
 		}else if(start.center.x > destination.center.x && angle_to_destination > internal_angle && angle_to_destination < (180f-internal_angle)){
 			
-			PlaceDoor(new Vector3 (start.top_x-1,0,(int)Random.Range(start.top_z+1,start.top_z+start.length_z-1)),4);
+			return PlaceDoor(new Vector3 (start.top_x,0,(int)Random.Range(start.top_z+1,start.top_z+start.length_z-1)),4);
 		}else{
 			
-			PlaceDoor(new Vector3 ((int)Random.Range(start.top_x+1,start.top_x+start.width_x-1),0,start.top_z+start.length_z),3);
+			return PlaceDoor(new Vector3 ((int)Random.Range(start.top_x+1,start.top_x+start.width_x-1),0,start.top_z+start.length_z-1),3);
 		}
 	}
 
-	void BFSHallway(Vector3 current,Vector3 goal){
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-	}
-
-	/*TE: 3 = top/down door. 4 = side door*/
-	void PlaceDoor(Vector3 location, int door_type){
+	Vector3 PlaceDoor(Vector3 location, int door_type){
 
 		map_generation_grid [(int)location.x, (int)location.z] = door_type;
 
+		return location;
 	}
+
+	bool BFSHallway(Vector3 current, Vector3 goal){
+
+		if (current.x != goal.x && current.z != goal.z) {
+			
+			List<Pathnode> possible_node = new List<Pathnode> ();
+
+
+			if (current.z - 1 > 0) {
+				if (map_generation_grid [(int)current.x, (int)current.z - 1] != 2) {
+					if(!visited[(int)current.x,(int)current.z-1]){
+
+						visited[(int)current.x,(int)current.z-1] = true;
+						Vector3 up = new Vector3 (current.x, current.y, current.z - 1);
+						Pathnode new_up_node = new Pathnode (up,Vector3.Distance(current,up));
+						possible_node.Add(new_up_node);
+					}
+				}			
+			}
+
+	
+			if (current.x + 1 < map_width_x - 2) {
+				if (map_generation_grid [(int)current.x + 1, (int)current.z] != 2) {
+					if(!visited[(int)current.x+1,(int)current.z]){
+
+						visited[(int)current.x+1,(int)current.z] = true;
+						Vector3 right = new Vector3 (current.x + 1, current.y, current.z);
+						Pathnode new_right_node = new Pathnode (right,Vector3.Distance(current,right));
+						possible_node.Add(new_right_node);
+					}
+				}			
+			}
+
+
+			if (current.x - 1 > 0) {
+				if (map_generation_grid [(int)current.x - 1, (int)current.z] != 2) {
+					if(!visited[(int)current.x-1,(int)current.z]){
+
+						visited[(int)current.x-1,(int)current.z] = true;
+						Vector3 left = new Vector3 (current.x - 1, current.y, current.z);
+						Pathnode new_left_node = new Pathnode (left,Vector3.Distance(current,left));
+						possible_node.Add(new_left_node);
+					}
+				}			
+			}
+
+	
+			if (current.z + 1 < map_length_z) {
+				if (map_generation_grid [(int)current.x, (int)current.z + 1] != 2) {
+					if(!visited[(int)current.x,(int)current.z+1]){
+						
+						visited[(int)current.x,(int)current.z+1] = true;
+						Vector3 down = new Vector3 (current.x, current.y, current.z + 1);
+						Pathnode new_down_node = new Pathnode (down,Vector3.Distance(current,down));
+						possible_node.Add(new_down_node);
+					}
+				}
+			}
+
+			int number_of_nodes = possible_node.Count;
+
+		
+			for (int k = number_of_nodes - 1; k >= 0; k--) {
+				for(int l = 1; l<k;l++){
+					if(possible_node[l].distance_to_target < possible_node[l-1].distance_to_target){
+						Pathnode temp = possible_node[l];
+						possible_node [l] = possible_node [l - 1];
+						possible_node [l - 1] = temp;
+					}
+				}
+			}
+
+			if (number_of_nodes > 0) {
+				for (int i = 0; i < number_of_nodes; i++) {					
+					if (BFSHallway (possible_node [i].location, goal)) {
+						if(map_generation_grid [(int)current.x, (int)current.z] != 3 && map_generation_grid [(int)current.x, (int)current.z] != 4){
+							map_generation_grid [(int)current.x, (int)current.z] = 1;
+						}
+						return true;
+					}
+				}
+				return false;
+			} else {
+				return false;
+			}
+		}
+		else
+		{
+			return true;
+		}
+	}*/
+
+
 
 
 	bool RoomCollision(Room room){
@@ -235,6 +368,46 @@ public class MapGenerator : MonoBehaviour {
 				}
 			}
 		}
+	}
+
+	void AddDoors(){
+		for(int lengthZ = 0;lengthZ<map_length_z;lengthZ++)
+		{
+			for(int widthX = 0;widthX<map_width_x;widthX++)
+			{
+				if(map_generation_grid[widthX,lengthZ] == 5){
+					if(map_generation_grid[widthX-1,lengthZ]==1){
+						map_generation_grid [widthX-1, lengthZ] = 4;
+					}
+
+					if(map_generation_grid[widthX+1,lengthZ]==1){
+						map_generation_grid [widthX+1, lengthZ] = 4;
+					}
+
+					if(map_generation_grid[widthX,lengthZ-1]==1){
+						map_generation_grid [widthX, lengthZ-1] = 3;
+					}
+
+					if(map_generation_grid[widthX,lengthZ+1]==1){
+						map_generation_grid [widthX, lengthZ+1] = 3;
+					}
+				}
+			}
+		}
+
+	}
+
+	void CleanUpPaths(){
+		for(int lengthZ = 0;lengthZ<map_length_z;lengthZ++)
+		{
+			for(int widthX = 0;widthX<map_width_x;widthX++)
+			{
+				if(map_generation_grid[widthX,lengthZ] == 5){
+					map_generation_grid [widthX, lengthZ] = 1;
+				}
+			}
+		}
+
 	}
 
 	void CleanUpHallways(){
@@ -324,12 +497,18 @@ public class MapGenerator : MonoBehaviour {
 
 		current_map_graph = new RoomGraph (actual_room_count);
 
-		foreach(Room current_room in current_room_list){
-			
+		foreach(Room current_room in current_room_list){			
 
 			current_map_graph.AddRoom (current_room);
 
 		}
+	}
+
+	void PlacePlayer(){
+
+		Room start_room = current_map_graph.room_graph [0];
+
+		Instantiate(player,new Vector3(start_room.center.x,1,start_room.center.z),Quaternion.identity);
 	}
 
 	void DrawMap(){
@@ -346,7 +525,6 @@ public class MapGenerator : MonoBehaviour {
 				/*Instantiate a wall and floor tile.*/
 				if (map_generation_grid [widthX, lengthZ]==2) {
 					GameObject wall_tile = (GameObject)Instantiate (wall_prefab, new Vector3 (widthX,0.75f,lengthZ), Quaternion.identity);
-					GameObject floor_tile = (GameObject)Instantiate (floor_prefab, new Vector3 (widthX,0.0f,lengthZ), Quaternion.identity);
 				}
 
 				if (map_generation_grid [widthX, lengthZ]==3) {
@@ -372,7 +550,7 @@ public class MapGenerator : MonoBehaviour {
 
 			Edge current = current_map_graph.edges [i];
 
-			Debug.DrawLine(current_map_graph.room_graph[current.start_room].center,current_map_graph.room_graph[current.destination_room].center,Color.green,120f,false);
+			Debug.DrawLine(current_map_graph.room_graph[current.start_room].center,current_map_graph.room_graph[current.destination_room].center,Color.green,360f,false);
 
 		}
 	}
